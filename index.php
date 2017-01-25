@@ -15,9 +15,7 @@ $di->set( "utils", function(){
 
 $di->set( "providers", function(){
 
-    $availableProviders[ProviderTypes::IP] = ["IpApi"];
-
-    //$availableProviders[ProviderTypes::IP] = ["IpApi", "FreeGeoIp"];
+    $availableProviders[ProviderTypes::IP] = ["IpApi", "FreeGeoIp"];
     //$availableProviders[ProviderTypes::Weather] = ["OpenWeatherMap"];
 
     $providerFactory = new ProviderFactory();
@@ -77,21 +75,21 @@ class ProviderFactory{
 
     }
 
-    function getIPProvider( $tag ){
+    function getProvider( $type, $tag ){
 
-        // @todo Find provider by tag or default
+        // Defaults to first one if it exists
 
-        return $this->providers[ProviderTypes::IP][0] ?
-               $this->providers[ProviderTypes::IP][0] : null;
+        $default = $this->providers[$type][0] ? $this->providers[$type][0] : null;
 
-    }
+        // Find by tag
 
-    function getWeatherProvider( $tag ){
+        foreach( $this->providers[$type] as $provider ){
 
-        // @todo Find provider by tag or default
+            if( $tag == $provider->getTag() ) return $provider;
 
-        return $this->providers[ProviderTypes::Weather][0] ?
-               $this->providers[ProviderTypes::Weather][0] : null;
+        }
+
+        return $default;
 
     }
 
@@ -99,15 +97,47 @@ class ProviderFactory{
 
 class Utils{
 
+    /**
+     * Makes a curl GET call to an external service
+     *
+     * @param $provider
+     * @param array $params
+     * @throws Exception
+     */
+
     function externalRequest( $provider, $params = [] ){
 
         if( $provider ) {
 
-            echo("externalRequest to " . $provider->getUrl());
+            try{
+
+                $ch = curl_init();
+
+                // @todo Replace params to build specific URLs
+
+                curl_setopt( $ch, CURLOPT_URL, $provider->getUrl() );
+                curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, "GET" );
+                curl_setopt( $ch, CURLOPT_PORT, 80 );
+
+                curl_setopt( $ch, CURLOPT_NOBODY, false );
+                curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
+                curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, false );
+
+                $ret = curl_exec( $ch );
+
+                curl_close( $ch );
+
+                return [ "success" => true, "data" => json_decode( $ret ) ];
+
+            } catch( Exception $e ){
+
+                return [ "success" => false, "data" => $e->getMessage() ];
+
+            }
 
         } else{
 
-            // Invalid provider
+            return [ "success" => false, "data" => "Invalid provider" ];
 
         }
 
