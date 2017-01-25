@@ -1,5 +1,6 @@
 <?php
 
+use \Phalcon\Http\Response;
 use \Lxrco\Enums\ProviderTypes;
 
 // Routes
@@ -10,7 +11,7 @@ $app->get( "/geolocation", function() use( $app ){
 
 } );
 
-$app->get( "/geolocation/{ip_address}", function() use( $app ){
+$app->get( "/geolocation/{ip_address}", function( $ip_address ) use( $app ){
 
     lookup_ip( $app, $ip_address );
 
@@ -20,30 +21,43 @@ $app->get( "/geolocation/{ip_address}", function() use( $app ){
 
 function lookup_ip( $app, $ip_address = null ){
 
+    $response = new Response();
+    $response->setStatusCode( 500 ); // Defaults error
+    $response->setHeader( "Content-Type", "application/json" );
+
     $service = $app->request->get( "service" ) ? $app->request->get( "service" ) : null;
+
+    // Finds the provider for the request
 
     $provider = $app->providers->getProvider( ProviderTypes::IP, $service );
 
-    $outerResponse = $app->utils->externalRequest( $provider, ["ip_address" => $ip_address] );
+    if( $provider ) {
 
-    if( $outerResponse["success"] ) {
+        // Do an external -curl- call based on the provider
 
-        $outerResponse = $outerResponse["data"];
+        $outerResponse = $app->utils->externalRequest( $provider, ["ip_address" => $ip_address] );
 
-        var_dump( $outerResponse );
+        if( $outerResponse["success"] ){
 
-        echo "<hr />";
+            $formattedData = $provider->getFormattedResponse( $outerResponse["data"] );
 
-        // @todo implement a template response on Provider class
+            // Sends a good response
 
-        echo( $outerResponse->country_code . "<br />" );
-        echo( $outerResponse->country_name . "<br />" );
-        echo( $outerResponse->city . "<br />" );
+            $response->setStatusCode( 200 );
+            $response->setJsonContent( $formattedData );
 
-    } else {
+        } else {
 
-        die( $outerResponse->data );
+            $response->setJsonContent( $outerResponse->data );
+
+        }
+
+    } else{
+
+        $response->setJsonContent( ["error" => "Invalid provider"] );
 
     }
+
+    $response->send();
 
 }
