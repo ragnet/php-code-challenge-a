@@ -1,10 +1,14 @@
 <?php
 
-class Provider {
+abstract class Provider {
+
+    // Attributes
 
     private $tag = null;
     private $url = null;
     private $key = null;
+
+    // Getters and Setters
 
     public function getUrl(){
 
@@ -41,5 +45,14 @@ class Provider {
         $this->key = $key;
 
     }
+
+    /**
+     * Function to be implemented on each subclass
+     *
+     * @param $data
+     * @return mixed
+     */
+
+    abstract function getFormattedResponse( $data );
 
 }
