@@ -11,21 +11,21 @@ use \Lxrco\Enums\ProviderTypes;
 
 $app->get( "/geolocation", function() use( $app ){
 
-lookup_ip( $app );
+    $geoInfo = lookup_ip( $app );
+
+    sendResponse( $geoInfo );
 
 } );
 
 $app->get( "/geolocation/{ip_address}", function( $ip_address ) use( $app ){
 
-lookup_ip( $app, $ip_address );
+    $geoInfo = lookup_ip( $app, $ip_address );
+
+    sendResponse( $geoInfo );
 
 } );
 
 function lookup_ip( $app, $ip_address = null ){
-
-    $response = new Response();
-    $response->setStatusCode( 500 ); // Defaults error
-    $response->setHeader( "Content-Type", "application/json" );
 
     $service = $app->request->get( "service" ) ? $app->request->get( "service" ) : null;
 
@@ -41,26 +41,21 @@ function lookup_ip( $app, $ip_address = null ){
 
         if( $outerResponse["success"] ){
 
-            $formattedData = $provider->getFormattedResponse( $outerResponse["data"] );
-
-            // Sends a good response
-
-            $response->setStatusCode( 200 );
-            $response->setJsonContent( $formattedData );
+            $data = $provider->getFormattedResponse( $outerResponse["data"] );
 
         } else {
 
-            $response->setJsonContent( $outerResponse->data );
+            $data = ["error" => $outerResponse->data];
 
         }
 
     } else{
 
-        $response->setJsonContent( ["error" => "Invalid provider"] );
+        $data = ["error" => "Invalid provider"];
 
     }
 
-    $response->send();
+    return $data;
 
 }
 
@@ -72,23 +67,45 @@ function lookup_ip( $app, $ip_address = null ){
 
 $app->get( "/weather", function() use( $app ){
 
-    lookup_weather( $app );
+    // Finds first the city by IP (default)
+
+    $geoInfo = lookup_ip( $app );
+
+    $city = $geoInfo["geo"]["city"] . "," . $geoInfo["geo"]["region"];
+
+    // Finds weather info on that city
+
+    $weatherInfo = lookup_weather( $app, urlencode( $city ) );
+
+    $weatherInfo["ip"] = $geoInfo["ip"];
+    $weatherInfo["city"] = $city;
+
+    sendResponse( $weatherInfo );
 
 } );
 
 $app->get( "/weather/{ip_address}", function( $ip_address ) use( $app ){
 
-    lookup_weather( $app, $ip_address );
+    // Finds first the city by IP
+
+    $geoInfo = lookup_ip( $app, $ip_address );
+
+    $city = $geoInfo["geo"]["city"] . "," . $geoInfo["geo"]["region"];
+
+    // Finds weather info on that city
+
+    $weatherInfo = lookup_weather( $app, urlencode( $city ) );
+
+    $weatherInfo["ip"] = $geoInfo["ip"];
+    $weatherInfo["city"] = $city;
+
+    sendResponse( $weatherInfo );
 
 } );
 
 // Router function
 
-function lookup_weather( $app, $ip_address = null ){
-
-    $response = new Response();
-    $response->setStatusCode( 500 ); // Defaults error
-    $response->setHeader( "Content-Type", "application/json" );
+function lookup_weather( $app, $city ){
 
     $service = $app->request->get( "service" ) ? $app->request->get( "service" ) : null;
 
@@ -100,28 +117,42 @@ function lookup_weather( $app, $ip_address = null ){
 
         // Do an external -curl- call based on the provider
 
-        $outerResponse = $app->utils->externalRequest( $provider, ["city" => "Montreal,QC"] );
+        $outerResponse = $app->utils->externalRequest( $provider, ["city" => $city] );
 
         if( $outerResponse["success"] ){
 
-            $formattedData = $provider->getFormattedResponse( $outerResponse["data"] );
-
-            // Sends a good response
-
-            $response->setStatusCode( 200 );
-            $response->setJsonContent( $formattedData );
+            $data = $provider->getFormattedResponse( $outerResponse["data"] );
 
         } else {
 
-            $response->setJsonContent( $outerResponse->data );
+            $data = ["error" => $outerResponse->data];
 
         }
 
     } else{
 
-        $response->setJsonContent( ["error" => "Invalid provider"] );
+        $data = ["error" => "Invalid provider"];
 
     }
+
+    return $data;
+
+}
+
+
+/**
+ *
+ * Auxiliar functions
+ *
+ */
+
+function sendResponse( $data ){
+
+    $response = new Response();
+
+    $response->setStatusCode( 200 );
+    $response->setHeader( "Content-Type", "application/json" );
+    $response->setJsonContent( $data );
 
     $response->send();
 
