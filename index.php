@@ -1,5 +1,5 @@
 <?php
-require( "./enums/enums.php" );
+require( "enums/enums.php" );
 
 use Phalcon\Mvc\Micro;
 use Phalcon\Di\FactoryDefault;
@@ -77,19 +77,25 @@ class ProviderFactory{
 
     function getProvider( $type, $tag ){
 
-        // Defaults to first one if it exists
+        if( !empty( $tag ) ){
 
-        $default = $this->providers[$type][0] ? $this->providers[$type][0] : null;
+            // Find by tag
 
-        // Find by tag
+            foreach( $this->providers[$type] as $provider ){
 
-        foreach( $this->providers[$type] as $provider ){
+                if( $tag == $provider->getTag() ) return $provider;
 
-            if( $tag == $provider->getTag() ) return $provider;
+            }
+
+        } else {
+
+            // Returns default provider
+
+            return $this->providers[$type][0] ? $this->providers[$type][0] : null;
 
         }
 
-        return $default;
+        return null;
 
     }
 
@@ -111,11 +117,25 @@ class Utils{
 
             try{
 
+                // Replace params on the URL
+
+                $endpoint = $provider->getUrl();
+
+                foreach( $params as $key => $value ){
+
+                    $endpoint = str_replace( "{" . $key . "}", $value, $endpoint );
+
+                }
+
+                // Clear empty params
+
+                $endpoint = str_replace( "{}", "", $endpoint );
+
+                // Do a CURL call
+
                 $ch = curl_init();
 
-                // @todo Replace params to build specific URLs
-
-                curl_setopt( $ch, CURLOPT_URL, $provider->getUrl() );
+                curl_setopt( $ch, CURLOPT_URL,  $endpoint );
                 curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, "GET" );
                 curl_setopt( $ch, CURLOPT_PORT, 80 );
 
