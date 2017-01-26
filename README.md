@@ -1,12 +1,9 @@
+# Requirements
 
-=== @todo ===
-
-- Add installation section
-- Add requirements section
-- Add how to use section
+- PHP 5.5+
+- Phalcon 2.0.8+ (https://phalconphp.com)
+- PHPUnit 4.8+ (https://phpunit.de)
  
- ...
-
 === Original Instructions ===
 
 # PHP Code Challenge
