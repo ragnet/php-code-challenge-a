@@ -1,8 +1,21 @@
 <?php
 
+/**
+ * Class ProviderFactory
+ *
+ * Manages all providers keeping them fresh on the memory and
+ * allowing a search by tag (name)
+ */
+
 class ProviderFactory{
 
     private $providers = [];
+
+    /**
+     * Loads all providers in memory
+     *
+     * @param $allProviders
+     */
 
     function loadAll( $allProviders ){
 
@@ -34,6 +47,14 @@ class ProviderFactory{
         }
 
     }
+
+    /**
+     * Gets one provider based on the tag (name) or a default one (first)
+     *
+     * @param $type
+     * @param $tag
+     * @return null
+     */
 
     function getProvider( $type, $tag ){
 

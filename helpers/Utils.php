@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Class Utils
+ *
+ * Utility functions to be used all over the application
+ */
+
 class Utils{
 
     /**

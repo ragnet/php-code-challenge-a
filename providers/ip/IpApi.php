@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Class IpApi
+ *
+ * Gives support to ip-api.com IP API
+ */
+
 class IpApi extends Provider {
 
     function IpApi(){

@@ -40,7 +40,7 @@ $app = new Micro();
 
 $app->setDI( $di );
 
-// Add routes and router functions
+// Add routes and lookup functions
 
 include( "services/api.php" );
 

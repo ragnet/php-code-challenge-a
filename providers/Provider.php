@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Class Provider
+ *
+ * Abstract class to be inherit by all provider classes
+ */
+
 abstract class Provider {
 
     // Attributes

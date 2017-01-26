@@ -3,84 +3,43 @@
 use \Phalcon\Http\Response;
 use \Lxrco\Enums\ProviderTypes;
 
-/**
- *
- * Geolocation service
- *
- */
+// Default endpoint
+
+$app->get( "/", function(){
+
+    sendResponse( ["error" => "No endpoint specified"] );
+
+} );
+
+// Geolocation service
 
 $app->get( "/geolocation", function() use( $app ){
 
-    $geoInfo = lookup_ip( $app );
+    $geoInfo = lookup( $app, ProviderTypes::IP, ["ip_address" => null] );
 
-    sendResponse( $geoInfo );
+    handleGeolocation( $geoInfo );
 
 } );
 
 $app->get( "/geolocation/{ip_address}", function( $ip_address ) use( $app ){
 
-    $geoInfo = lookup_ip( $app, $ip_address );
+    $geoInfo = lookup( $app, ProviderTypes::IP, ["ip_address" => $ip_address] );
 
-    sendResponse( $geoInfo );
+    handleGeolocation( $geoInfo );
 
 } );
 
-function lookup_ip( $app, $ip_address = null ){
-
-    $service = $app->request->get( "service" ) ? $app->request->get( "service" ) : null;
-
-    // Finds the provider for the request
-
-    $provider = $app->providers->getProvider( ProviderTypes::IP, $service );
-
-    if( $provider ) {
-
-        // Do an external -curl- call based on the provider
-
-        $outerResponse = $app->utils->externalRequest( $provider, ["ip_address" => $ip_address] );
-
-        if( $outerResponse["success"] ){
-
-            $data = $provider->getFormattedResponse( $outerResponse["data"] );
-
-        } else {
-
-            $data = ["error" => $outerResponse->data];
-
-        }
-
-    } else{
-
-        $data = ["error" => "Invalid provider"];
-
-    }
-
-    return $data;
-
-}
-
-/**
- *
- * Weather service
- *
- */
+// Weather service
 
 $app->get( "/weather", function() use( $app ){
 
     // Finds first the city by IP (default)
 
-    $geoInfo = lookup_ip( $app );
+    $geoInfo = lookup( $app, ProviderTypes::IP, ["ip_address" => null] );
 
-    $city = $geoInfo["geo"]["city"] . "," . $geoInfo["geo"]["region"];
+    // Finds weather on that city
 
-    // Finds weather info on that city
-
-    $weatherInfo = lookup_weather( $app, urlencode( $city ) );
-
-    $weatherInfo["ip"] = $geoInfo["ip"];
-    $weatherInfo["city"] = $city;
-
-    sendResponse( $weatherInfo );
+    handleWeatherByGeo( $app, $geoInfo );
 
 } );
 
@@ -88,36 +47,97 @@ $app->get( "/weather/{ip_address}", function( $ip_address ) use( $app ){
 
     // Finds first the city by IP
 
-    $geoInfo = lookup_ip( $app, $ip_address );
+    $geoInfo = lookup( $app, ProviderTypes::IP, ["ip_address" => $ip_address] );
 
-    $city = $geoInfo["geo"]["city"] . "," . $geoInfo["geo"]["region"];
+    // Finds weather on that city
 
-    // Finds weather info on that city
-
-    $weatherInfo = lookup_weather( $app, urlencode( $city ) );
-
-    $weatherInfo["ip"] = $geoInfo["ip"];
-    $weatherInfo["city"] = $city;
-
-    sendResponse( $weatherInfo );
+    handleWeatherByGeo( $app, $geoInfo );
 
 } );
 
-// Router function
 
-function lookup_weather( $app, $city ){
+/**
+ * Handles an IP (geolocation) request
+ *
+ * @param $geo
+ */
+
+function handleGeolocation( $geo ){
+
+    if( $geo["geo"]["city"] ) {
+
+        sendResponse( $geo );
+
+    } else{
+
+        sendResponse( ["error" => "Couldn't find IP information"] );
+
+    }
+
+}
+
+/**
+ * Handles a weather request
+ *
+ * @param $app
+ * @param $city
+ */
+
+function handleWeatherByGeo( $app, $geo ){
+
+    if( $geo["geo"]["city"] ) {
+
+        // Extracts the city from geo response
+
+        $city = $geo["geo"]["city"] . "," . $geo["geo"]["region"];
+
+        // Do a lookup for weather data
+
+        $weatherInfo = lookup( $app, ProviderTypes::Weather, ["city" => urlencode($city)] );
+
+        // Override info on response
+
+        $weatherInfo["ip"] = $geo["ip"];
+        $weatherInfo["city"] = $city;
+
+        sendResponse( $weatherInfo );
+
+    } else{
+
+        sendResponse( ["error" => "The IP provided couldn't be matched with a city"] );
+
+    }
+
+}
+
+/**
+ * Lookup function
+ *
+ * This works as a hub connected to the routes. It receives and extracts info
+ * to determine what data is needed, what custom parameter is necessary and
+ * also what provider will be requested
+ *
+ * @param $app
+ * @param $type
+ * @param $params
+ * @return array
+ */
+
+function lookup( $app, $type, $params ){
+
+    // Gets a provider from the URL if specified
 
     $service = $app->request->get( "service" ) ? $app->request->get( "service" ) : null;
 
     // Finds the provider for the request
 
-    $provider = $app->providers->getProvider( ProviderTypes::Weather, $service );
+    $provider = $app->providers->getProvider( $type, $service );
 
     if( $provider ) {
 
         // Do an external -curl- call based on the provider
 
-        $outerResponse = $app->utils->externalRequest( $provider, ["city" => $city] );
+        $outerResponse = $app->utils->externalRequest( $provider, $params );
 
         if( $outerResponse["success"] ){
 
@@ -139,18 +159,19 @@ function lookup_weather( $app, $city ){
 
 }
 
-
 /**
+ * sendResponse
  *
- * Auxiliar functions
+ * Prepares and sends a standard JSON response
  *
+ * @param $data
  */
 
 function sendResponse( $data ){
 
     $response = new Response();
 
-    $response->setStatusCode( 200 );
+    $response->setStatusCode( isset( $data["error"] ) ? 500 : 200 );
     $response->setHeader( "Content-Type", "application/json" );
     $response->setJsonContent( $data );
 

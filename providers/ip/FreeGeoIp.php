@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Class FreeGeoIp
+ *
+ * Gives support to freegeoip.net IP API
+ */
+
 class FreeGeoIp extends Provider {
 
     function FreeGeoIp(){

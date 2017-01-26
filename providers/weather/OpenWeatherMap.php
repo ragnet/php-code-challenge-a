@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * Class OpenWeatherMap
+ *
+ * Gives support to openweathermap.org weather API
+ */
+
 class OpenWeatherMap extends Provider {
 
     function OpenWeatherMap(){
